@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build --mode prod",
     "preview": "vite preview",
-    "deploy": "npm run build && rsync --delete --rsync-path=\"sudo rsync\" -rvz dist/ indigo:/var/www/html/nanodesu"
+    "deploy": "sh deploy.sh"
   },
   "dependencies": {
     "vue": "^3.4.0",
