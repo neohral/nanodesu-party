@@ -1,12 +1,16 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
-import WatchRoom from '../views/WatchRoom.vue'
+import Party from '../views/Party.vue'
+import Intro from '../views/Intro.vue'
+import RoomSelect from '../views/RoomSelect.vue'
 
 const routes = [
-  { path: '/:roomId', component: WatchRoom }
+  { path: '/', component: RoomSelect },
+  { path: '/party/:roomId', component: Party },
+  { path: '/intro/:roomId', component: Intro }
 ]
 
 export default createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/nanodesu/'),
   routes
 })
