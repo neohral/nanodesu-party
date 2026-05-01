@@ -117,6 +117,12 @@
                 Hide video
               </label>
             </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" v-model="loopvideo" @change="toggleHideQueue" />
+                 Empty loop
+              </label>
+            </div>
           </div>
         </div>
       </div>

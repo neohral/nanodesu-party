@@ -18,7 +18,8 @@ const initroom = {
     expectedUsers: [],
     timeoutId: "",
     opacity: 1,
-    hideQueue: false
+    hideQueue: false,
+    endLoop: false
 }
 function videoRegister(io, socket, roomState) {
     socket.on("add-video", async ({ roomId, videoId, seekTo }) => {
@@ -48,17 +49,25 @@ function videoRegister(io, socket, roomState) {
         if (socket.id != roomState[roomId].leader) return
         prepareVideo(io, roomId, roomState)
     })
+    socket.on("toggle-loop", ({ roomId }) => {
+    roomState[roomId].endLoop = !roomState[roomId].endLoop
+    io.to(roomId).emit("sync-loop", { endLoop: roomState[roomId].endLoop })
+  })
 }
 
 function prepareVideo(io, roomId, roomState) {
     const room = roomState[roomId]
-    const next = room.queue.shift()
+    let next = room.queue.shift()
     if (!next) {
-        room.currentVideoId = null
-        room.currentVideoStatus = "waiting"
-        room.currentVideoSeekTo = 0
-        io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
-        return
+        if(room.endLoop){
+            next = room.historyQueue.pop()
+        }else{
+            room.currentVideoId = null
+            room.currentVideoStatus = "waiting"
+            room.currentVideoSeekTo = 0
+            io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
+            return
+        }
     }
     room.historyQueue.push(next)
     room.currentVideoId = next.videoId

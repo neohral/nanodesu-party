@@ -12,6 +12,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const currentVideoSeekTo = ref(0);
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
+  const endLoop = ref(false)
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -58,6 +59,10 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
 
   function toggleHideQueue() {
     socket.emit("toggle-hide-queue", { roomId });
+  }
+
+  function toggleHideQueue() {
+    socket.emit("toggle-loop", { roomId });
   }
 
   function stateChange(event) {
@@ -136,6 +141,9 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.on("sync-opacity", (state) => {
       hideVideo.value = state.opacity === 0;
       changeOpacity(state.opacity);
+    });
+    socket.on("sync-loop", (state) => {
+      endLoop.value = state.endLoop
     });
     socket.on("video-sync-state", ({ states, totalPauseTime }) => {
       currentVideoPauseTime.value = totalPauseTime;
