@@ -43,7 +43,6 @@
                   />
                   {{ option.text }}
                 </label>
-                <span class="vote-count">({{ option.count }}票)</span>
               </div>
             </div>
             <div v-else-if="poll.phase === 'results'" class="poll-results-compact">
@@ -68,7 +67,7 @@
             <button @click="rollDice" class="dice-button-compact">Roll</button>
           </div>
           <div class="dices-compact">
-            <div v-for="dice in roomState.dices.slice(-3)" :key="dice.id" class="dice-result-compact">
+            <div v-for="dice in reverseItems(roomState.dices)" :key="dice.id" class="dice-result-compact">
               <span class="dice-user">{{ dice.userName }}</span>
               <span class="dice-rolls">{{ dice.rolls.join(', ') }}</span>
               <span class="dice-total">= {{ dice.total }}</span>
@@ -343,7 +342,9 @@ socket.on("prepare-video", ({ videoId, seekTo }) => {
 
 const timerRefresh = ref(0);
 const timerRefreshInterval = ref(null);
-
+const reverseItems = (items)=> {
+      return items.slice().reverse();
+    };
 onMounted(() => {
   timerRefreshInterval.value = setInterval(() => {
     timerRefresh.value += 1;

@@ -80,7 +80,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
 
   function createNewPoll() {
     const options = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < roomStateRef.value.members.length; i++) {
       const member = roomStateRef.value.members[i];
       options.push(member ? member.name : `選択肢${i + 1}`);
     }
