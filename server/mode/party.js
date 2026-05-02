@@ -19,7 +19,10 @@ const initroom = {
     timeoutId: "",
     opacity: 1,
     hideQueue: false,
-    endLoop: false
+    endLoop: false,
+    timers: [],
+    polls: [],
+    dices: []
 }
 function videoRegister(io, socket, roomState) {
     socket.on("add-video", async ({ roomId, videoId, seekTo }) => {
@@ -86,5 +89,174 @@ module.exports = {
     initroom,
     mode,
     videoRegister,
-    prepareVideo
+    prepareVideo,
+    timerRegister,
+    pollRegister,
+    diceRegister
+}
+
+function timerRegister(io, socket, roomState) {
+    socket.on("create-timer", ({ roomId, seconds, name }) => {
+        const room = roomState[roomId]
+        const timer = {
+            id: crypto.randomUUID(),
+            name: name || `Timer ${room.timers.length + 1}`,
+            seconds: seconds,
+            startedBy: socket.id,
+            startedAt: Date.now(),
+            isActive: true
+        }
+        room.timers.push(timer)
+        io.to(roomId).emit("timers-updated", { timers: room.timers })
+
+        setTimeout(() => {
+            room.timers = room.timers.filter(t => t.id !== timer.id)
+            io.to(roomId).emit("timers-updated", { timers: room.timers })
+            io.to(roomId).emit("timer-completed", { timerId: timer.id, timerName: timer.name })
+        }, seconds * 1000)
+    })
+
+    socket.on("delete-timer", ({ roomId, timerId }) => {
+        const room = roomState[roomId]
+        room.timers = room.timers.filter(t => t.id !== timerId)
+        io.to(roomId).emit("timers-updated", { timers: room.timers })
+    })
+}
+
+function pollRegister(io, socket, roomState) {
+    socket.on("create-poll", ({ roomId, options, allowMultiple }) => {
+        const room = roomState[roomId]
+        if (socket.id !== room.leader) return
+
+        const poll = {
+            id: crypto.randomUUID(),
+            options: options.map((opt, idx) => ({
+                id: idx,
+                text: opt,
+                votes: [],
+                count: 0
+            })),
+            allowMultiple: allowMultiple || false,
+            phase: "creation",
+            createdAt: Date.now()
+        }
+        room.polls.push(poll)
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("update-poll-option", ({ roomId, pollId, optionIndex, newText }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll || poll.phase !== "creation") return
+        if (poll.options[optionIndex]) {
+            poll.options[optionIndex].text = newText
+            io.to(roomId).emit("polls-updated", { polls: room.polls })
+        }
+    })
+
+    socket.on("add-poll-option", ({ roomId, pollId, optionText }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll || poll.phase !== "creation") return
+        poll.options.push({
+            id: poll.options.length,
+            text: optionText,
+            votes: [],
+            count: 0
+        })
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("remove-poll-option", ({ roomId, pollId, optionIndex }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll || poll.phase !== "creation") return
+        poll.options.splice(optionIndex, 1)
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("start-poll", ({ roomId, pollId }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll) return
+        poll.phase = "voting"
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("vote-poll", ({ roomId, pollId, optionIds }) => {
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll || poll.phase !== "voting") return
+
+        const userVotes = poll.options.filter(opt => opt.votes.includes(socket.id))
+        userVotes.forEach(opt => {
+            opt.votes = opt.votes.filter(id => id !== socket.id)
+            opt.count = opt.votes.length
+        })
+
+        const optionIdsArray = Array.isArray(optionIds) ? optionIds : [optionIds]
+        optionIdsArray.forEach(optionId => {
+            const option = poll.options[optionId]
+            if (option && !option.votes.includes(socket.id)) {
+                option.votes.push(socket.id)
+                option.count = option.votes.length
+            }
+        })
+
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("end-poll", ({ roomId, pollId }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll) return
+        poll.phase = "results"
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
+    socket.on("delete-poll", ({ roomId, pollId }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        room.polls = room.polls.filter(p => p.id !== pollId)
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+}
+
+function diceRegister(io, socket, roomState) {
+    socket.on("roll-dice", ({ roomId, diceCounts, diceType }) => {
+        const room = roomState[roomId]
+        const member = room.members.find(m => m.id === socket.id)
+        if (!member) return
+
+        const rolls = []
+        for (let i = 0; i < diceCounts; i++) {
+            rolls.push(Math.floor(Math.random() * diceType) + 1)
+        }
+
+        const diceResult = {
+            id: crypto.randomUUID(),
+            userId: socket.id,
+            userName: member.name,
+            diceCounts: diceCounts,
+            diceType: diceType,
+            rolls: rolls,
+            total: rolls.reduce((a, b) => a + b, 0),
+            timestamp: Date.now()
+        }
+
+        room.dices.push(diceResult)
+        io.to(roomId).emit("dices-updated", { dices: room.dices })
+    })
+
+    socket.on("clear-dices", ({ roomId }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        room.dices = []
+        io.to(roomId).emit("dices-updated", { dices: room.dices })
+    })
 }

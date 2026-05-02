@@ -6,7 +6,7 @@ require("dotenv").config()
 const app = express()
 const server = http.createServer(app)
 const { videoSyncRegister } = require("./common/videoSync")
-const { initroom,mode,videoRegister,prepareVideo } = require("./mode/party")
+const { initroom,mode,videoRegister,prepareVideo,timerRegister,pollRegister,diceRegister } = require("./mode/party")
 const io = new Server(server, {
   cors: { origin: "*" }
 })
@@ -16,6 +16,9 @@ const roomState = {}
 io.on("connection", (socket) => {
   videoSyncRegister(io,socket,roomState)
   videoRegister(io,socket,roomState)
+  timerRegister(io,socket,roomState)
+  pollRegister(io,socket,roomState)
+  diceRegister(io,socket,roomState)
 
   socket.on("join-room", ({ roomId, name }) => {
     socket.join(roomId)
@@ -75,7 +78,7 @@ io.on("connection", (socket) => {
   });
 })
 
-server.listen(process.env.PORT_PARTY || 3003, () => {
-  console.log(`Server running on http://localhost:${process.env.PORT_PARTY || 3003}`)
+server.listen(process.env.PORT_PARTY || 3006, () => {
+  console.log(`Server running on http://localhost:${process.env.PORT_PARTY || 3006}`)
   console.log(mode)
 })

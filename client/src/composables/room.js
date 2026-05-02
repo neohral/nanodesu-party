@@ -1,4 +1,5 @@
 import { ref } from "vue";
+
 export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) {
   const userId = ref("");
   const hideQueue = ref(false);
@@ -39,6 +40,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     return match ? match[1] : null;
   }
 
+
   function startPlayback(timestamp) {
     const latency = (Date.now() - timestamp) / 1000;
     console.log("start", latency);
@@ -48,9 +50,99 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     player.playVideo();
   }
 
-  function skipToNextVideo() {
-    socket.emit("video-ended", { roomId });
-    partyState.value = "waiting";
+  const timerSeconds = ref(60);
+  const timerName = ref("");
+
+  function createTimer() {
+    const seconds = timerSeconds.value;
+    const name = timerName.value || `Timer ${(roomStateRef.value.timers || []).length + 1}`;
+    if (seconds <= 0) return;
+    socket.emit("create-timer", { roomId, seconds, name });
+    timerSeconds.value = 60;
+    timerName.value = "";
+  }
+
+  function deleteTimer(timerId) {
+    socket.emit("delete-timer", { roomId, timerId });
+  }
+
+  const pollCount = ref(1);
+
+  function createNewPoll() {
+    const options = [];
+    for (let i = 0; i < 3; i++) {
+      const member = roomStateRef.value.members[i];
+      options.push(member ? member.name : `選択肢${i + 1}`);
+    }
+    socket.emit("create-poll", { roomId, options, allowMultiple: false });
+  }
+
+  function startPoll(pollId) {
+    socket.emit("start-poll", { roomId, pollId });
+  }
+
+  function endPoll(pollId) {
+    socket.emit("end-poll", { roomId, pollId });
+  }
+
+  function deletePoll(pollId) {
+    socket.emit("delete-poll", { roomId, pollId });
+  }
+
+  function addPollOption(pollId) {
+    const poll = roomStateRef.value.polls.find(p => p.id === pollId);
+    if (!poll) return;
+    socket.emit("add-poll-option", { roomId, pollId, optionText: `選択肢${poll.options.length + 1}` });
+  }
+
+  function removePollOption(pollId, optionIndex) {
+    socket.emit("remove-poll-option", { roomId, pollId, optionIndex });
+  }
+
+  function votePoll(pollId, optionIndex, allowMultiple, event) {
+    const poll = roomStateRef.value.polls.find(p => p.id === pollId)
+    if (!poll) return
+
+    let optionIds = []
+    if (allowMultiple) {
+      const checkboxes = document.querySelectorAll(`input[name="poll-${pollId}"]:checked`)
+      optionIds = Array.from(checkboxes).map(cb => parseInt(cb.value))
+    } else {
+      optionIds = [optionIndex]
+    }
+    
+    socket.emit("vote-poll", { roomId, pollId, optionIds });
+  }
+
+  function getPollVotedCount(poll) {
+    const votedUsers = new Set();
+    poll.options.forEach(opt => {
+      opt.votes.forEach(vote => votedUsers.add(vote));
+    });
+    return votedUsers.size;
+  }
+
+  const diceCount = ref(1);
+  const diceType = ref(6);
+
+  function rollDice() {
+    if (diceCount.value <= 0) return;
+    socket.emit("roll-dice", { roomId, diceCounts: diceCount.value, diceType: diceType.value });
+  }
+
+  function clearDices() {
+    socket.emit("clear-dices", { roomId });
+  }
+
+  function getRoomMemberName(userId) {
+    const member = roomStateRef.value.members.find(m => m.id === userId);
+    return member ? member.name : "Unknown";
+  }
+
+  function getTimerRemaining(timer) {
+    const elapsed = (Date.now() - timer.startedAt) / 1000;
+    const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed));
+    return remaining;
   }
 
   function toggleOpacity() {
@@ -61,8 +153,9 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("toggle-hide-queue", { roomId });
   }
 
-  function toggleHideQueue() {
-    socket.emit("toggle-loop", { roomId });
+  function skipToNextVideo() {
+    socket.emit("video-ended", { roomId });
+    partyState.value = "waiting";
   }
 
   function stateChange(event) {
@@ -122,6 +215,10 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       hideQueue.value = state.hideQueue;
       hideVideo.value = state.opacity === "0" || state.opacity === 0;
       changeOpacity(state.opacity);
+      
+      // 全体の状態を更新（timers, polls, dices を含む）
+      roomState.value = state;
+      
       if (state.currentVideoId) {
         partyState.value = "catching-up";
         currentVideoStartTime.value =
@@ -161,6 +258,29 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       currentVideoPauseTime.value = 0;
       startPlayback(currentVideoStartTime.value);
     });
+    socket.on("timers-updated", ({ timers }) => {
+      roomState.value.timers = timers;
+    });
+    socket.on("timer-completed", ({ timerId, timerName }) => {
+      const audio = new Audio(new URL("../aseets/sounds/incorrect.mp3", import.meta.url).href);
+      audio.play().catch(err => console.log("Audio play error:", err));
+    });
+    socket.on("polls-updated", ({ polls }) => {
+      roomState.value.polls = polls;
+    });
+    socket.on("poll-vote-count", ({ pollId, counts }) => {
+      const poll = roomState.value.polls.find(p => p.id === pollId);
+      if (poll) {
+        counts.forEach(({ optionId, count }) => {
+          if (poll.options[optionId]) {
+            poll.options[optionId].count = count;
+          }
+        });
+      }
+    });
+    socket.on("dices-updated", ({ dices }) => {
+      roomState.value.dices = dices;
+    });
   }
 
   return {
@@ -186,5 +306,24 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     toggleOpacity,
     toggleHideQueue,
     stateChange,
+    timerSeconds,
+    timerName,
+    createTimer,
+    deleteTimer,
+    pollCount,
+    createNewPoll,
+    startPoll,
+    endPoll,
+    deletePoll,
+    addPollOption,
+    removePollOption,
+    votePoll,
+    getPollVotedCount,
+    diceCount,
+    diceType,
+    rollDice,
+    clearDices,
+    getRoomMemberName,
+    getTimerRemaining,
   };
 }
