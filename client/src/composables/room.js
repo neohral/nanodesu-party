@@ -50,16 +50,26 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     player.playVideo();
   }
 
-  const timerSeconds = ref(60);
+  const timerMinutes = ref(10);
+  const timerSeconds = ref(0);
   const timerName = ref("");
 
   function createTimer() {
-    const seconds = timerSeconds.value;
+    const minutes = timerMinutes.value || 0;
+    const seconds = timerSeconds.value || 0;
+    const totalSeconds = minutes * 60 + seconds;
     const name = timerName.value || `Timer ${(roomStateRef.value.timers || []).length + 1}`;
-    if (seconds <= 0) return;
-    socket.emit("create-timer", { roomId, seconds, name });
-    timerSeconds.value = 60;
+    if (totalSeconds <= 0) return;
+    socket.emit("create-timer", { roomId, seconds: totalSeconds, name });
+    timerMinutes.value = 0;
+    timerSeconds.value = 30;
     timerName.value = "";
+  }
+
+  function formatTimerDisplay(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
   function deleteTimer(timerId) {
@@ -151,6 +161,10 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
 
   function toggleHideQueue() {
     socket.emit("toggle-hide-queue", { roomId });
+  }
+
+  function toggleLoop() {
+    socket.emit("toggle-loop", { roomId });
   }
 
   function skipToNextVideo() {
@@ -262,8 +276,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       roomState.value.timers = timers;
     });
     socket.on("timer-completed", ({ timerId, timerName }) => {
-      const audio = new Audio(new URL("../aseets/sounds/incorrect.mp3", import.meta.url).href);
-      audio.play().catch(err => console.log("Audio play error:", err));
+      const audio = new Audio(new URL("../aseets/sounds/alarm.mp3", import.meta.url).href);      audio.play().catch(err => console.log("Audio play error:", err));
     });
     socket.on("polls-updated", ({ polls }) => {
       roomState.value.polls = polls;
@@ -305,11 +318,14 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     eventRegister,
     toggleOpacity,
     toggleHideQueue,
+    toggleLoop,
     stateChange,
+    timerMinutes,
     timerSeconds,
     timerName,
     createTimer,
     deleteTimer,
+    formatTimerDisplay,
     pollCount,
     createNewPoll,
     startPoll,

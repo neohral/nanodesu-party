@@ -16,10 +16,7 @@
 
       <div class="button-section">
         <button class="btn btn-primary" @click="handleSelect('party')">
-          Party に参加
-        </button>
-        <button class="btn btn-secondary" @click="handleSelect('intro')">
-          Intro に参加
+          Murder に参加
         </button>
       </div>
 

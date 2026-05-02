@@ -1,8 +1,80 @@
 <template>
   <div class="container">
     <div class="main-content">
+      <!-- Player Section -->
       <div class="player-wrapper">
         <div ref="playerContainer" class="player"></div>
+      </div>
+
+      <!-- Timer, Vote, Dice Panels -->
+      <div class="tool-panels">
+        <!-- Timer Panel -->
+        <div class="tool-panel timer-panel">
+          <h4>⏱ Timer</h4>
+          <div class="timer-input-group">
+            <input v-model.number="timerMinutes" type="number" placeholder="分" class="timer-input timer-minutes" min="0" />
+            <span class="timer-separator">:</span>
+            <input v-model.number="timerSeconds" type="number" placeholder="秒" class="timer-input timer-secs" min="0" max="59" />
+            <input v-model="timerName" type="text" placeholder="名前" class="timer-name-input" />
+            <button @click="createTimer" class="timer-button">Set</button>
+          </div>
+          <div class="timers-list">
+            <div v-for="timer in roomState.timers" :key="timer.id" class="timer-item-compact">
+              <span class="timer-name">{{ timer.name }}</span>
+              <span class="timer-remaining">{{ (timerRefresh, formatTimerDisplay(getTimerRemaining(timer))) }}</span>
+              <button @click="deleteTimer(timer.id)" class="timer-delete-btn">×</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vote Panel -->
+        <div class="tool-panel vote-panel">
+          <h4>🗳 Vote</h4>
+          <div v-if="roomState.polls.length === 0" class="no-data">投票なし</div>
+          <div v-for="poll in roomState.polls" :key="poll.id" class="poll-compact">
+            <div v-if="poll.phase === 'voting'" class="poll-voting-compact">
+              <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-compact">
+                <label>
+                  <input 
+                    :type="poll.allowMultiple ? 'checkbox' : 'radio'" 
+                    :value="idx"
+                    @change="votePoll(poll.id, idx, poll.allowMultiple, $event)"
+                    :name="`poll-${poll.id}`"
+                  />
+                  {{ option.text }}
+                </label>
+                <span class="vote-count">({{ option.count }}票)</span>
+              </div>
+            </div>
+            <div v-else-if="poll.phase === 'results'" class="poll-results-compact">
+              <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-result-compact">
+                <span>{{ option.text }}: {{ option.count }}票</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dice Panel -->
+        <div class="tool-panel dice-panel">
+          <h4>🎲 Dice</h4>
+          <div class="dice-input-group-compact">
+            <input v-model.number="diceCount" type="number" placeholder="個数" class="dice-input-compact" min="1" />
+            <select v-model.number="diceType" class="dice-select-compact">
+              <option :value="6">1d6</option>
+              <option :value="10">1d10</option>
+              <option :value="20">1d20</option>
+              <option :value="100">1d100</option>
+            </select>
+            <button @click="rollDice" class="dice-button-compact">Roll</button>
+          </div>
+          <div class="dices-compact">
+            <div v-for="dice in roomState.dices.slice(-3)" :key="dice.id" class="dice-result-compact">
+              <span class="dice-user">{{ dice.userName }}</span>
+              <span class="dice-rolls">{{ dice.rolls.join(', ') }}</span>
+              <span class="dice-total">= {{ dice.total }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -35,15 +107,6 @@
         </button>
         <button @click="activeTab = 'settings'" :class="{ active: activeTab === 'settings' }" class="tab-button">
           Settings
-        </button>
-        <button @click="activeTab = 'timer'" :class="{ active: activeTab === 'timer' }" class="tab-button">
-          Timer
-        </button>
-        <button @click="activeTab = 'vote'" :class="{ active: activeTab === 'vote' }" class="tab-button">
-          Vote
-        </button>
-        <button @click="activeTab = 'dice'" :class="{ active: activeTab === 'dice' }" class="tab-button">
-          Dice
         </button>
         <button v-if="userId === roomState.leader" @click="activeTab = 'leader'"
           :class="{ active: activeTab === 'leader' }" class="tab-button leader-tab">
@@ -103,138 +166,6 @@
           </div>
         </div>
 
-        <!-- Timer Tab -->
-        <div v-if="activeTab === 'timer'" class="tab-content">
-          <div class="timer-section">
-            <h4>Timers</h4>
-            <div class="timer-input-group">
-              <input v-model.number="timerSeconds" type="number" placeholder="秒数" class="timer-input" min="1" />
-              <input v-model="timerName" type="text" placeholder="タイマー名" class="timer-name-input" />
-              <button @click="createTimer" class="timer-button">Set</button>
-            </div>
-            <div class="timers-list">
-              <div v-for="timer in roomState.timers" :key="timer.id" class="timer-item">
-                <div class="timer-info">
-                  <span class="timer-name">{{ timer.name }}</span>
-                  <span class="timer-user">{{ getRoomMemberName(timer.startedBy) }}</span>
-                  <span class="timer-remaining">残り時間: {{ (timerRefresh, getTimerRemaining(timer)) }}秒</span>
-                </div>
-                <button @click="deleteTimer(timer.id)" class="timer-delete-btn">×</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Vote Tab -->
-        <div v-if="activeTab === 'vote'" class="tab-content">
-          <div class="vote-section">
-            <h4>Voting</h4>
-            <div v-if="roomState.polls.length === 0" class="no-polls">
-              <p>投票がありません</p>
-            </div>
-            <div v-for="poll in roomState.polls" :key="poll.id" class="poll-container">
-              <!-- Creation Phase -->
-              <div v-if="poll.phase === 'creation' && userId === roomState.leader" class="poll-creation">
-                <h5>投票を作成中</h5>
-                <div class="poll-options-edit">
-                  <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-edit">
-                    <input v-model="option.text" type="text" class="poll-option-input" />
-                    <button @click="removePollOption(poll.id, idx)" class="delete-btn">×</button>
-                  </div>
-                </div>
-                <button @click="addPollOption(poll.id)" class="poll-add-option-btn">選択肢を追加</button>
-                <div class="poll-options-toggle">
-                  <label>
-                    <input type="checkbox" v-model="poll.allowMultiple" />
-                    複数選択を許可
-                  </label>
-                </div>
-                <div class="poll-phase-buttons">
-                  <button @click="startPoll(poll.id)" class="poll-start-btn">投票開始</button>
-                  <button @click="deletePoll(poll.id)" class="poll-delete-btn">削除</button>
-                </div>
-              </div>
-
-              <!-- Voting Phase -->
-              <div v-else-if="poll.phase === 'voting'" class="poll-voting">
-                <h5>投票中</h5>
-                <div class="poll-options-voting">
-                  <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-voting">
-                    <label class="poll-option-label">
-                      <input 
-                        :type="poll.allowMultiple ? 'checkbox' : 'radio'" 
-                        :value="idx"
-                        @change="votePoll(poll.id, idx, poll.allowMultiple, $event)"
-                        :name="`poll-${poll.id}`"
-                        class="poll-input"
-                      />
-                      {{ option.text }}
-                    </label>
-                  </div>
-                </div>
-                <div v-if="userId === roomState.leader" class="poll-voting-info">
-                  <p>投票済み: {{ getPollVotedCount(poll) }} / {{ roomState.members.length }}</p>
-                  <button @click="endPoll(poll.id)" class="poll-end-btn">結果発表</button>
-                </div>
-              </div>
-
-              <!-- Results Phase -->
-              <div v-else-if="poll.phase === 'results'" class="poll-results">
-                <h5>投票結果</h5>
-                <div class="poll-results-display">
-                  <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-result-item">
-                    <div class="result-label">{{ option.text }}: {{ option.count }}票</div>
-                    <div class="result-voters">
-                      <span v-for="voterId in option.votes" :key="voterId" class="voter-name">
-                        {{ getRoomMemberName(voterId) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div v-if="userId === roomState.leader" class="poll-result-buttons">
-                  <button @click="deletePoll(poll.id)" class="poll-delete-btn">削除</button>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="userId === roomState.leader" class="create-new-poll">
-              <button @click="createNewPoll" class="new-poll-btn">新しい投票を作成</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Dice Tab -->
-        <div v-if="activeTab === 'dice'" class="tab-content">
-          <div class="dice-section">
-            <h4>Dice Roller</h4>
-            <div class="dice-input-group">
-              <input v-model.number="diceCount" type="number" placeholder="個数" class="dice-input" min="1" />
-              <select v-model.number="diceType" class="dice-select">
-                <option :value="6">1d6</option>
-                <option :value="10">1d10</option>
-                <option :value="20">1d20</option>
-                <option :value="100">1d100</option>
-              </select>
-              <button @click="rollDice" class="dice-button">Roll</button>
-            </div>
-            <div v-if="userId === roomState.leader" class="dice-clear">
-              <button @click="clearDices" class="dice-clear-btn">履歴をクリア</button>
-            </div>
-            <div class="dices-history">
-              <div v-for="dice in roomState.dices" :key="dice.id" class="dice-result">
-                <div class="dice-result-header">
-                  <span class="dice-user">{{ dice.userName }}</span>
-                  <span class="dice-notation">{{ dice.diceCounts }}d{{ dice.diceType }}</span>
-                </div>
-                <div class="dice-rolls">
-                  <span v-for="(roll, idx) in dice.rolls" :key="idx" class="dice-roll">{{ roll }}</span>
-                </div>
-                <div class="dice-total">合計: {{ dice.total }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Leader Commands Tab -->
         <div v-if="activeTab === 'leader' && userId === roomState.leader" class="tab-content">
           <div class="leader-commands">
@@ -242,6 +173,54 @@
             <button @click="skipToNextVideo" class="command-button danger-button">
               Skip to next video
             </button>
+          </div>
+
+          <!-- Poll Management -->
+          <div class="poll-management">
+            <h4>Poll Management</h4>
+            <button @click="createNewPoll" class="command-button success-button">
+              New Poll
+            </button>
+            <div v-for="poll in roomState.polls" :key="poll.id" class="poll-mgmt-item">
+              <div class="poll-mgmt-header">
+                <span v-if="poll.phase === 'creation'">📝 Creating</span>
+                <span v-else-if="poll.phase === 'voting'">🗳️ Voting</span>
+                <span v-else>✅ Results</span>
+              </div>
+              
+              <!-- Creation Phase -->
+              <div v-if="poll.phase === 'creation'" class="poll-mgmt-creation">
+                <div class="poll-options-mgmt">
+                  <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-mgmt">
+                    <input v-model="option.text" type="text" class="poll-option-input-mgmt" />
+                    <button @click="removePollOption(poll.id, idx)" class="delete-btn-mgmt">×</button>
+                  </div>
+                </div>
+                <button @click="addPollOption(poll.id)" class="poll-add-option-btn-mgmt">Option +</button>
+                <label class="poll-toggle-mgmt">
+                  <input type="checkbox" v-model="poll.allowMultiple" />
+                  Multi-vote
+                </label>
+                <div class="poll-mgmt-buttons">
+                  <button @click="startPoll(poll.id)" class="command-button success-button">Start</button>
+                  <button @click="deletePoll(poll.id)" class="command-button danger-button">Delete</button>
+                </div>
+              </div>
+
+              <!-- Voting Phase -->
+              <div v-else-if="poll.phase === 'voting'" class="poll-mgmt-voting">
+                <p>投票中: {{ getPollVotedCount(poll) }} / {{ roomState.members.length }}</p>
+                <button @click="endPoll(poll.id)" class="command-button success-button">Results</button>
+              </div>
+
+              <!-- Results Phase -->
+              <div v-else class="poll-mgmt-results">
+                <div v-for="(option, idx) in poll.options" :key="option.id" class="result-summary">
+                  {{ option.text }}: {{ option.count }}票
+                </div>
+                <button @click="deletePoll(poll.id)" class="command-button danger-button">Close</button>
+              </div>
+            </div>
           </div>
 
           <div class="leader-settings">
@@ -256,6 +235,12 @@
               <label>
                 <input type="checkbox" v-model="hideVideo" @change="toggleOpacity" />
                 Hide video
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" v-model="loopvideo" @change="toggleLoop" />
+                 Empty loop
               </label>
             </div>
           </div>
@@ -323,11 +308,14 @@ const {
   eventRegister,
   toggleOpacity,
   toggleHideQueue,
+  toggleLoop,
   stateChange,
+  timerMinutes,
   timerSeconds,
   timerName,
   createTimer,
   deleteTimer,
+  formatTimerDisplay,
   pollCount,
   createNewPoll,
   startPoll,
