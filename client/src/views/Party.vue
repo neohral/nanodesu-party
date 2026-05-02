@@ -119,7 +119,7 @@
             </div>
             <div class="setting-item">
               <label>
-                <input type="checkbox" v-model="loopvideo" @change="toggleHideQueue" />
+                <input type="checkbox" v-model="loopvideo" @change="toggleLoop" />
                  Empty loop
               </label>
             </div>
@@ -185,6 +185,7 @@ const {
   eventRegister,
   toggleOpacity,
   toggleHideQueue,
+  toggleLoop,
   stateChange,
 } = useRoom(socket, roomId, roomState, playerRef, changeOpacity);
 eventRegister(io, socket, roomState);

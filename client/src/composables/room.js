@@ -61,7 +61,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("toggle-hide-queue", { roomId });
   }
 
-  function toggleHideQueue() {
+  function toggleLoop() {
     socket.emit("toggle-loop", { roomId });
   }
 
@@ -185,6 +185,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     eventRegister,
     toggleOpacity,
     toggleHideQueue,
+    toggleLoop,
     stateChange,
   };
 }
