@@ -36,7 +36,11 @@
             <button type="button" @click="createNewPoll" class="command-button success-button poll-mgmt-new">
               New Poll
             </button>
-            <div v-for="poll in roomState.polls" :key="poll.id" class="poll-mgmt-mini">
+            <div
+              v-for="poll in roomState.polls.filter((p) => p.phase === 'creation' || p.phase === 'voting')"
+              :key="poll.id"
+              class="poll-mgmt-mini"
+            >
               <div v-if="poll.phase === 'creation'" class="poll-mgmt-mini-creation">
                 <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-mgmt-option-row">
                   <input
@@ -66,16 +70,6 @@
                   投票中: {{ getPollVotedCount(poll) }} / {{ roomState.members.length }}
                 </p>
                 <button type="button" @click="endPoll(poll.id)" class="mini-btn success">Results</button>
-              </div>
-              <div v-else class="poll-mgmt-mini-results">
-                <p
-                  v-for="option in poll.options"
-                  :key="option.id"
-                  class="poll-mgmt-result-line"
-                >
-                  {{ option.text }}: {{ option.count }}
-                </p>
-                <button type="button" @click="deletePoll(poll.id)" class="mini-btn danger">Close</button>
               </div>
             </div>
           </div>
@@ -108,6 +102,14 @@
               <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-result-compact">
                 <span>{{ option.text }}: {{ option.count }}票</span>
               </div>
+              <button
+                v-if="userId === roomState.leader"
+                type="button"
+                @click="deletePoll(poll.id)"
+                class="mini-btn danger poll-results-close"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

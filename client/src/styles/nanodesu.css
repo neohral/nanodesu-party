@@ -747,6 +747,11 @@
   gap: 4px;
 }
 
+.poll-results-close {
+  margin-top: 6px;
+  align-self: flex-start;
+}
+
 .poll-option-compact {
   display: flex;
   align-items: center;
@@ -773,6 +778,104 @@
   font-size: 9px;
 }
 
+.poll-management-compact {
+  border-top: 1px solid #ddd;
+  padding-top: 8px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.poll-mgmt-compact-title {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+}
+
+.poll-mgmt-new {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 11px;
+  padding: 6px 8px;
+}
+
+.poll-mgmt-mini {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  padding: 6px;
+  margin-top: 6px;
+}
+
+.poll-mgmt-mini-creation,
+.poll-mgmt-mini-voting {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.poll-mgmt-option-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.poll-option-input-compact {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.poll-mgmt-voting-meta {
+  margin: 0;
+  font-size: 10px;
+}
+
+.poll-mgmt-mini-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mini-btn {
+  padding: 4px 8px;
+  font-size: 10px;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  cursor: pointer;
+  background: #f0f0f0;
+}
+
+.mini-btn.success {
+  background: #4caf50;
+  color: white;
+  border-color: #43a047;
+}
+
+.mini-btn.danger {
+  background: #f44336;
+  color: white;
+  border-color: #e53935;
+}
+
+.mini-toggle {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compact-delete {
+  padding: 2px 6px;
+  font-size: 9px;
+  background: #ffebee;
+  border: 1px solid #ef5350;
+  color: #c62828;
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .poll-result-compact {
   padding: 4px;
   background: #f9f9f9;
@@ -784,6 +887,7 @@
 
 .dice-input-group-compact {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 8px;
 }
@@ -817,6 +921,21 @@
 
 .dice-button-compact:hover {
   background: #7b1fa2;
+}
+
+.dice-clear-btn-compact {
+  padding: 6px 10px;
+  background: #c62828;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dice-clear-btn-compact:hover {
+  background: #b71c1c;
 }
 
 .dices-compact {
