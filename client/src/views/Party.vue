@@ -239,6 +239,8 @@ onMounted(() => {
         onReady: () => {
           playerRef.value = player;
           const iframe = player.getIframe();
+          iframe.style.width = "100%";
+          iframe.style.height = "100%";
           iframe.style.position = "absolute";
           iframe.style.top = "0";
           iframe.style.left = "0";
@@ -258,6 +260,8 @@ onMounted(() => {
   window.addEventListener("resize", () => {
     if (player) {
       const iframe = player.getIframe();
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
     }
   });
 });
