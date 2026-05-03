@@ -78,7 +78,7 @@ io.on("connection", (socket) => {
   });
 })
 
-server.listen(process.env.PORT_PARTY || 3006, () => {
-  console.log(`Server running on http://localhost:${process.env.PORT_PARTY || 3006}`)
+server.listen(process.env.PORT_PARTY || 3003, () => {
+  console.log(`Server running on http://localhost:${process.env.PORT_PARTY || 3003}`)
   console.log(mode)
 })

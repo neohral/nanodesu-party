@@ -6,7 +6,7 @@
         <div ref="playerContainer" class="player"></div>
       </div>
 
-      <PartyToolPanels />
+      <PartyToolPanels v-if="isMurder"/>
     </div>
 
     <!-- Toggle Button -->
@@ -143,6 +143,10 @@ import PartyToolPanels from "../components/PartyToolPanels.vue";
 import { PARTY_TOOL_PANELS_KEY } from "../components/partyToolPanelsKeys.js";
 import { useRoom } from "../composables/room";
 import { usePartyToolPanels } from "../composables/usePartyToolPanels";
+
+const props = defineProps({
+  isMurder: Boolean
+})
 
 const route = useRoute();
 const roomId = route.params.roomId;

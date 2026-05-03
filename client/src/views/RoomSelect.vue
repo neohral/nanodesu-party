@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="room-select-wrapper">
-      <h1>nanodesu(Murder)</h1>
+      <h1>nanodesu</h1>
       <p class="subtitle">部屋名を選択して参加しましょう</p>
       
       <div class="input-section">
@@ -18,7 +18,11 @@
         <button class="btn btn-primary" @click="handleSelect('party')">
           Party に参加
         </button>
+        <button class="btn btn-secondary" @click="handleSelect('intro')">
+          Intro に参加
+        </button>
       </div>
+      
 
       <div class="info-section">
         <p class="default-room">デフォルト: <code>default</code></p>
@@ -104,6 +108,7 @@ h1 {
 
 .button-section {
   display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   margin-bottom: 20px;
 }
