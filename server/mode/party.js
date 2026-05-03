@@ -85,6 +85,13 @@ function prepareVideo(io, roomId, roomState) {
     room.timeoutId = setTimeout(() => startPlayback(io, roomId, roomState), 5000)
 }
 
+/** roomId:timerId -> completion timeout (not serialized to clients) */
+const timerCompletionHandles = new Map()
+
+function timerHandleKey(roomId, timerId) {
+    return `${roomId}\0${timerId}`
+}
+
 module.exports = {
     initroom,
     mode,
@@ -109,15 +116,24 @@ function timerRegister(io, socket, roomState) {
         room.timers.push(timer)
         io.to(roomId).emit("timers-updated", { timers: room.timers })
 
-        setTimeout(() => {
+        const key = timerHandleKey(roomId, timer.id)
+        const handle = setTimeout(() => {
+            timerCompletionHandles.delete(key)
             room.timers = room.timers.filter(t => t.id !== timer.id)
             io.to(roomId).emit("timers-updated", { timers: room.timers })
             io.to(roomId).emit("timer-completed", { timerId: timer.id, timerName: timer.name })
         }, seconds * 1000)
+        timerCompletionHandles.set(key, handle)
     })
 
     socket.on("delete-timer", ({ roomId, timerId }) => {
         const room = roomState[roomId]
+        const key = timerHandleKey(roomId, timerId)
+        const handle = timerCompletionHandles.get(key)
+        if (handle) {
+            clearTimeout(handle)
+            timerCompletionHandles.delete(key)
+        }
         room.timers = room.timers.filter(t => t.id !== timerId)
         io.to(roomId).emit("timers-updated", { timers: room.timers })
     })
@@ -155,6 +171,15 @@ function pollRegister(io, socket, roomState) {
         }
     })
 
+    socket.on("update-poll-allow-multiple", ({ roomId, pollId, allowMultiple }) => {
+        if (socket.id !== roomState[roomId].leader) return
+        const room = roomState[roomId]
+        const poll = room.polls.find(p => p.id === pollId)
+        if (!poll || poll.phase !== "creation") return
+        poll.allowMultiple = !!allowMultiple
+        io.to(roomId).emit("polls-updated", { polls: room.polls })
+    })
+
     socket.on("add-poll-option", ({ roomId, pollId, optionText }) => {
         if (socket.id !== roomState[roomId].leader) return
         const room = roomState[roomId]
@@ -178,11 +203,14 @@ function pollRegister(io, socket, roomState) {
         io.to(roomId).emit("polls-updated", { polls: room.polls })
     })
 
-    socket.on("start-poll", ({ roomId, pollId }) => {
+    socket.on("start-poll", ({ roomId, pollId, allowMultiple }) => {
         if (socket.id !== roomState[roomId].leader) return
         const room = roomState[roomId]
         const poll = room.polls.find(p => p.id === pollId)
         if (!poll) return
+        if (typeof allowMultiple === "boolean") {
+            poll.allowMultiple = allowMultiple
+        }
         poll.phase = "voting"
         io.to(roomId).emit("polls-updated", { polls: room.polls })
     })
@@ -192,20 +220,34 @@ function pollRegister(io, socket, roomState) {
         const poll = room.polls.find(p => p.id === pollId)
         if (!poll || poll.phase !== "voting") return
 
-        const userVotes = poll.options.filter(opt => opt.votes.includes(socket.id))
-        userVotes.forEach(opt => {
-            opt.votes = opt.votes.filter(id => id !== socket.id)
-            opt.count = opt.votes.length
-        })
+        const optionIdsArray = (Array.isArray(optionIds) ? optionIds : [optionIds])
+            .map((id) => Number(id))
+            .filter((id) => Number.isInteger(id) && id >= 0 && id < poll.options.length)
 
-        const optionIdsArray = Array.isArray(optionIds) ? optionIds : [optionIds]
-        optionIdsArray.forEach(optionId => {
-            const option = poll.options[optionId]
-            if (option && !option.votes.includes(socket.id)) {
-                option.votes.push(socket.id)
-                option.count = option.votes.length
-            }
-        })
+        if (poll.allowMultiple) {
+            poll.options.forEach((opt, idx) => {
+                const want = optionIdsArray.includes(idx)
+                const has = opt.votes.includes(socket.id)
+                if (want && !has) {
+                    opt.votes.push(socket.id)
+                } else if (!want && has) {
+                    opt.votes = opt.votes.filter(id => id !== socket.id)
+                }
+                opt.count = opt.votes.length
+            })
+        } else {
+            poll.options.forEach(opt => {
+                opt.votes = opt.votes.filter(id => id !== socket.id)
+                opt.count = opt.votes.length
+            })
+            optionIdsArray.forEach(optionId => {
+                const option = poll.options[optionId]
+                if (option && !option.votes.includes(socket.id)) {
+                    option.votes.push(socket.id)
+                    option.count = option.votes.length
+                }
+            })
+        }
 
         io.to(roomId).emit("polls-updated", { polls: room.polls })
     })

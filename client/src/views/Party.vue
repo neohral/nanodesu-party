@@ -30,15 +30,74 @@
         <!-- Vote Panel -->
         <div class="tool-panel vote-panel">
           <h4>🗳 Vote</h4>
-          <div v-if="roomState.polls.length === 0" class="no-data">投票なし</div>
-          <div v-for="poll in roomState.polls" :key="poll.id" class="poll-compact">
+
+          <div v-if="userId === roomState.leader" class="poll-management-compact">
+            <h5 class="poll-mgmt-compact-title">Poll Management</h5>
+            <button type="button" @click="createNewPoll" class="command-button success-button poll-mgmt-new">
+              New Poll
+            </button>
+            <div v-for="poll in roomState.polls" :key="poll.id" class="poll-mgmt-mini">
+              <div v-if="poll.phase === 'creation'" class="poll-mgmt-mini-creation">
+                <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-mgmt-option-row">
+                  <input
+                    v-model="option.text"
+                    type="text"
+                    class="poll-option-input-mgmt poll-option-input-compact"
+                    @input="updatePollOption(poll.id, idx, $event.target.value)"
+                  />
+                  <button type="button" @click="removePollOption(poll.id, idx)" class="compact-delete">×</button>
+                </div>
+                <button type="button" @click="addPollOption(poll.id)" class="mini-btn">+ Option</button>
+                <label class="mini-toggle">
+                  <input
+                    type="checkbox"
+                    :checked="poll.allowMultiple"
+                    @change="setPollAllowMultiple(poll.id, $event.target.checked)"
+                  />
+                  Multi-vote
+                </label>
+                <div class="poll-mgmt-mini-actions">
+                  <button type="button" @click="startPoll(poll.id)" class="mini-btn success">Start</button>
+                  <button type="button" @click="deletePoll(poll.id)" class="mini-btn danger">Delete</button>
+                </div>
+              </div>
+              <div v-else-if="poll.phase === 'voting'" class="poll-mgmt-mini-voting">
+                <p class="poll-mgmt-voting-meta">
+                  投票中: {{ getPollVotedCount(poll) }} / {{ roomState.members.length }}
+                </p>
+                <button type="button" @click="endPoll(poll.id)" class="mini-btn success">Results</button>
+              </div>
+              <div v-else class="poll-mgmt-mini-results">
+                <p
+                  v-for="option in poll.options"
+                  :key="option.id"
+                  class="poll-mgmt-result-line"
+                >
+                  {{ option.text }}: {{ option.count }}
+                </p>
+                <button type="button" @click="deletePoll(poll.id)" class="mini-btn danger">Close</button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            v-if="roomState.polls.filter((p) => p.phase === 'voting' || p.phase === 'results').length === 0"
+            class="no-data"
+          >
+            投票なし
+          </div>
+          <div
+            v-for="poll in roomState.polls.filter((p) => p.phase === 'voting' || p.phase === 'results')"
+            :key="`vote-${poll.id}`"
+            class="poll-compact"
+          >
             <div v-if="poll.phase === 'voting'" class="poll-voting-compact">
               <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-compact">
                 <label>
-                  <input 
-                    :type="poll.allowMultiple ? 'checkbox' : 'radio'" 
+                  <input
+                    :type="poll.allowMultiple ? 'checkbox' : 'radio'"
                     :value="idx"
-                    @change="votePoll(poll.id, idx, poll.allowMultiple, $event)"
+                    @change="votePoll(poll.id, idx, poll.allowMultiple)"
                     :name="`poll-${poll.id}`"
                   />
                   {{ option.text }}
@@ -64,7 +123,15 @@
               <option :value="20">1d20</option>
               <option :value="100">1d100</option>
             </select>
-            <button @click="rollDice" class="dice-button-compact">Roll</button>
+            <button type="button" @click="rollDice" class="dice-button-compact">Roll</button>
+            <button
+              v-if="userId === roomState.leader"
+              type="button"
+              @click="clearDices"
+              class="dice-clear-btn-compact"
+            >
+              Clear
+            </button>
           </div>
           <div class="dices-compact">
             <div v-for="dice in reverseItems(roomState.dices)" :key="dice.id" class="dice-result-compact">
@@ -174,54 +241,6 @@
             </button>
           </div>
 
-          <!-- Poll Management -->
-          <div class="poll-management">
-            <h4>Poll Management</h4>
-            <button @click="createNewPoll" class="command-button success-button">
-              New Poll
-            </button>
-            <div v-for="poll in roomState.polls" :key="poll.id" class="poll-mgmt-item">
-              <div class="poll-mgmt-header">
-                <span v-if="poll.phase === 'creation'">📝 Creating</span>
-                <span v-else-if="poll.phase === 'voting'">🗳️ Voting</span>
-                <span v-else>✅ Results</span>
-              </div>
-              
-              <!-- Creation Phase -->
-              <div v-if="poll.phase === 'creation'" class="poll-mgmt-creation">
-                <div class="poll-options-mgmt">
-                  <div v-for="(option, idx) in poll.options" :key="option.id" class="poll-option-mgmt">
-                    <input v-model="option.text" type="text" class="poll-option-input-mgmt" />
-                    <button @click="removePollOption(poll.id, idx)" class="delete-btn-mgmt">×</button>
-                  </div>
-                </div>
-                <button @click="addPollOption(poll.id)" class="poll-add-option-btn-mgmt">Option +</button>
-                <label class="poll-toggle-mgmt">
-                  <input type="checkbox" v-model="poll.allowMultiple" />
-                  Multi-vote
-                </label>
-                <div class="poll-mgmt-buttons">
-                  <button @click="startPoll(poll.id)" class="command-button success-button">Start</button>
-                  <button @click="deletePoll(poll.id)" class="command-button danger-button">Delete</button>
-                </div>
-              </div>
-
-              <!-- Voting Phase -->
-              <div v-else-if="poll.phase === 'voting'" class="poll-mgmt-voting">
-                <p>投票中: {{ getPollVotedCount(poll) }} / {{ roomState.members.length }}</p>
-                <button @click="endPoll(poll.id)" class="command-button success-button">Results</button>
-              </div>
-
-              <!-- Results Phase -->
-              <div v-else class="poll-mgmt-results">
-                <div v-for="(option, idx) in poll.options" :key="option.id" class="result-summary">
-                  {{ option.text }}: {{ option.count }}票
-                </div>
-                <button @click="deletePoll(poll.id)" class="command-button danger-button">Close</button>
-              </div>
-            </div>
-          </div>
-
           <div class="leader-settings">
             <h4>Leader Settings</h4>
             <div class="setting-item">
@@ -238,7 +257,7 @@
             </div>
             <div class="setting-item">
               <label>
-                <input type="checkbox" v-model="loopvideo" @change="toggleLoop" />
+                <input type="checkbox" v-model="endLoop" @change="toggleLoop" />
                  Empty loop
               </label>
             </div>
@@ -251,7 +270,7 @@
 
 <script setup>
 import '@/styles/nanodesu.css'
-import { ref, onMounted, watch, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute } from "vue-router";
 import { io } from "socket.io-client";
 import draggable from "vuedraggable";
@@ -308,6 +327,7 @@ const {
   toggleOpacity,
   toggleHideQueue,
   toggleLoop,
+  endLoop,
   stateChange,
   timerMinutes,
   timerSeconds,
@@ -322,12 +342,15 @@ const {
   deletePoll,
   addPollOption,
   removePollOption,
+  updatePollOption,
+  setPollAllowMultiple,
   votePoll,
   getPollVotedCount,
   diceCount,
   diceType,
   rollDice,
   clearDices,
+  stopAlarm,
   getRoomMemberName,
   getTimerRemaining,
 } = useRoom(socket, roomId, roomState, playerRef, changeOpacity);
@@ -389,6 +412,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  stopAlarm();
   if (timerRefreshInterval.value) {
     clearInterval(timerRefreshInterval.value);
   }

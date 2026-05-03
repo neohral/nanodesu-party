@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, nextTick } from "vue";
 
 export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) {
   const userId = ref("");
@@ -13,7 +13,8 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const currentVideoSeekTo = ref(0);
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
-  const endLoop = ref(false)
+  const endLoop = ref(false);
+  const currentAlarmAudio = ref(null);
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -72,7 +73,20 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 
+  function stopAlarm() {
+    const a = currentAlarmAudio.value;
+    if (a) {
+      a.pause();
+      a.currentTime = 0;
+      currentAlarmAudio.value = null;
+    }
+  }
+
   function deleteTimer(timerId) {
+    stopAlarm();
+    roomStateRef.value.timers = (roomStateRef.value.timers || []).filter(
+      (t) => t.id !== timerId,
+    );
     socket.emit("delete-timer", { roomId, timerId });
   }
 
@@ -88,7 +102,37 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   }
 
   function startPoll(pollId) {
-    socket.emit("start-poll", { roomId, pollId });
+    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
+    socket.emit("start-poll", {
+      roomId,
+      pollId,
+      allowMultiple: !!poll?.allowMultiple,
+    });
+  }
+
+  function updatePollOption(pollId, optionIndex, newText) {
+    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
+    if (poll?.options[optionIndex]) {
+      poll.options[optionIndex].text = newText;
+    }
+    socket.emit("update-poll-option", {
+      roomId,
+      pollId,
+      optionIndex,
+      newText,
+    });
+  }
+
+  function setPollAllowMultiple(pollId, allowMultiple) {
+    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
+    if (poll) {
+      poll.allowMultiple = !!allowMultiple;
+    }
+    socket.emit("update-poll-allow-multiple", {
+      roomId,
+      pollId,
+      allowMultiple,
+    });
   }
 
   function endPoll(pollId) {
@@ -109,19 +153,28 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("remove-poll-option", { roomId, pollId, optionIndex });
   }
 
-  function votePoll(pollId, optionIndex, allowMultiple, event) {
-    const poll = roomStateRef.value.polls.find(p => p.id === pollId)
-    if (!poll) return
+  function votePoll(pollId, optionIndex, allowMultiple) {
+    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
+    if (!poll || poll.phase !== "voting") return;
 
-    let optionIds = []
+    const emitVote = () => {
+      let optionIds = [];
+      if (allowMultiple) {
+        const checkboxes = document.querySelectorAll(
+          `input[name="poll-${pollId}"]:checked`,
+        );
+        optionIds = Array.from(checkboxes).map((cb) => Number(cb.value));
+      } else {
+        optionIds = [optionIndex];
+      }
+      socket.emit("vote-poll", { roomId, pollId, optionIds });
+    };
+
     if (allowMultiple) {
-      const checkboxes = document.querySelectorAll(`input[name="poll-${pollId}"]:checked`)
-      optionIds = Array.from(checkboxes).map(cb => parseInt(cb.value))
+      nextTick(emitVote);
     } else {
-      optionIds = [optionIndex]
+      emitVote();
     }
-    
-    socket.emit("vote-poll", { roomId, pollId, optionIds });
   }
 
   function getPollVotedCount(poll) {
@@ -141,6 +194,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   }
 
   function clearDices() {
+    roomStateRef.value.dices = [];
     socket.emit("clear-dices", { roomId });
   }
 
@@ -276,7 +330,12 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       roomState.value.timers = timers;
     });
     socket.on("timer-completed", ({ timerId, timerName }) => {
-      const audio = new Audio(new URL("../aseets/sounds/alarm.mp3", import.meta.url).href);      audio.play().catch(err => console.log("Audio play error:", err));
+      stopAlarm();
+      const audio = new Audio(
+        new URL("../aseets/sounds/alarm.mp3", import.meta.url).href,
+      );
+      currentAlarmAudio.value = audio;
+      audio.play().catch((err) => console.log("Audio play error:", err));
     });
     socket.on("polls-updated", ({ polls }) => {
       roomState.value.polls = polls;
@@ -319,12 +378,14 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     toggleOpacity,
     toggleHideQueue,
     toggleLoop,
+    endLoop,
     stateChange,
     timerMinutes,
     timerSeconds,
     timerName,
     createTimer,
     deleteTimer,
+    stopAlarm,
     formatTimerDisplay,
     pollCount,
     createNewPoll,
@@ -333,6 +394,8 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     deletePoll,
     addPollOption,
     removePollOption,
+    updatePollOption,
+    setPollAllowMultiple,
     votePoll,
     getPollVotedCount,
     diceCount,
