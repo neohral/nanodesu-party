@@ -234,6 +234,18 @@
 
 /* -------- LEADER COMMANDS -------- */
 
+.command-button {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: none;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  cursor: pointer;
+  background: #f0f0f0;
+}
+
 .leader-commands {
   margin-bottom: 20px;
 }
