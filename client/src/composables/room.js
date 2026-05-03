@@ -1,4 +1,4 @@
-import { ref, nextTick } from "vue";
+import { ref } from "vue";
 
 export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) {
   const userId = ref("");
@@ -14,7 +14,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
   const endLoop = ref(false);
-  const currentAlarmAudio = ref(null);
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -41,7 +40,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     return match ? match[1] : null;
   }
 
-
   function startPlayback(timestamp) {
     const latency = (Date.now() - timestamp) / 1000;
     console.log("start", latency);
@@ -49,164 +47,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     partyState.value = "willplay";
     player.seekTo(latency + currentVideoSeekTo.value);
     player.playVideo();
-  }
-
-  const timerMinutes = ref(10);
-  const timerSeconds = ref(0);
-  const timerName = ref("");
-
-  function createTimer() {
-    const minutes = timerMinutes.value || 0;
-    const seconds = timerSeconds.value || 0;
-    const totalSeconds = minutes * 60 + seconds;
-    const name = timerName.value || `Timer ${(roomStateRef.value.timers || []).length + 1}`;
-    if (totalSeconds <= 0) return;
-    socket.emit("create-timer", { roomId, seconds: totalSeconds, name });
-    timerMinutes.value = 0;
-    timerSeconds.value = 30;
-    timerName.value = "";
-  }
-
-  function formatTimerDisplay(totalSeconds) {
-    const minutes = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  function stopAlarm() {
-    const a = currentAlarmAudio.value;
-    if (a) {
-      a.pause();
-      a.currentTime = 0;
-      currentAlarmAudio.value = null;
-    }
-  }
-
-  function deleteTimer(timerId) {
-    stopAlarm();
-    roomStateRef.value.timers = (roomStateRef.value.timers || []).filter(
-      (t) => t.id !== timerId,
-    );
-    socket.emit("delete-timer", { roomId, timerId });
-  }
-
-  const pollCount = ref(1);
-
-  function createNewPoll() {
-    const options = [];
-    for (let i = 0; i < roomStateRef.value.members.length; i++) {
-      const member = roomStateRef.value.members[i];
-      options.push(member ? member.name : `選択肢${i + 1}`);
-    }
-    socket.emit("create-poll", { roomId, options, allowMultiple: false });
-  }
-
-  function startPoll(pollId) {
-    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
-    socket.emit("start-poll", {
-      roomId,
-      pollId,
-      allowMultiple: !!poll?.allowMultiple,
-    });
-  }
-
-  function updatePollOption(pollId, optionIndex, newText) {
-    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
-    if (poll?.options[optionIndex]) {
-      poll.options[optionIndex].text = newText;
-    }
-    socket.emit("update-poll-option", {
-      roomId,
-      pollId,
-      optionIndex,
-      newText,
-    });
-  }
-
-  function setPollAllowMultiple(pollId, allowMultiple) {
-    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
-    if (poll) {
-      poll.allowMultiple = !!allowMultiple;
-    }
-    socket.emit("update-poll-allow-multiple", {
-      roomId,
-      pollId,
-      allowMultiple,
-    });
-  }
-
-  function endPoll(pollId) {
-    socket.emit("end-poll", { roomId, pollId });
-  }
-
-  function deletePoll(pollId) {
-    socket.emit("delete-poll", { roomId, pollId });
-  }
-
-  function addPollOption(pollId) {
-    const poll = roomStateRef.value.polls.find(p => p.id === pollId);
-    if (!poll) return;
-    socket.emit("add-poll-option", { roomId, pollId, optionText: `選択肢${poll.options.length + 1}` });
-  }
-
-  function removePollOption(pollId, optionIndex) {
-    socket.emit("remove-poll-option", { roomId, pollId, optionIndex });
-  }
-
-  function votePoll(pollId, optionIndex, allowMultiple) {
-    const poll = roomStateRef.value.polls.find((p) => p.id === pollId);
-    if (!poll || poll.phase !== "voting") return;
-
-    const emitVote = () => {
-      let optionIds = [];
-      if (allowMultiple) {
-        const checkboxes = document.querySelectorAll(
-          `input[name="poll-${pollId}"]:checked`,
-        );
-        optionIds = Array.from(checkboxes).map((cb) => Number(cb.value));
-      } else {
-        optionIds = [optionIndex];
-      }
-      socket.emit("vote-poll", { roomId, pollId, optionIds });
-    };
-
-    if (allowMultiple) {
-      nextTick(emitVote);
-    } else {
-      emitVote();
-    }
-  }
-
-  function getPollVotedCount(poll) {
-    const votedUsers = new Set();
-    poll.options.forEach(opt => {
-      opt.votes.forEach(vote => votedUsers.add(vote));
-    });
-    return votedUsers.size;
-  }
-
-  const diceCount = ref(1);
-  const diceType = ref(6);
-
-  function rollDice() {
-    if (diceCount.value <= 0) return;
-    socket.emit("roll-dice", { roomId, diceCounts: diceCount.value, diceType: diceType.value });
-  }
-
-  function clearDices() {
-    roomStateRef.value.dices = [];
-    socket.emit("clear-dices", { roomId });
-  }
-
-  function getRoomMemberName(userId) {
-    const member = roomStateRef.value.members.find(m => m.id === userId);
-    return member ? member.name : "Unknown";
-  }
-
-  function getTimerRemaining(timer) {
-    const elapsed = (Date.now() - timer.startedAt) / 1000;
-    const remaining = Math.max(0, Math.ceil(timer.seconds - elapsed));
-    return remaining;
   }
 
   function toggleOpacity() {
@@ -228,7 +68,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
 
   function stateChange(event) {
     const player = playerRef.value;
-    console.log(event.data,partyState.value)
+    console.log(event.data, partyState.value);
     if (event.data === YT.PlayerState.CUED) {
       if (partyState.value === "catching-up") {
         partyState.value = roomStateRef.value.currentVideoStatus;
@@ -248,14 +88,14 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
             states: "pausing",
           });
         }
-        startPlayback(currentVideoStartTime.value + currentVideoPauseTime.value)
+        startPlayback(currentVideoStartTime.value + currentVideoPauseTime.value);
       }
       if (partyState.value === "willpausing") {
         partyState.value = "pausing";
       }
     }
     if (event.data === YT.PlayerState.PLAYING) {
-       playerPaused.value = false;
+      playerPaused.value = false;
       if (partyState.value === "pausing") {
         if (userId.value === roomStateRef.value.leader) {
           socket.emit("video-state-change", {
@@ -283,17 +123,19 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       hideQueue.value = state.hideQueue;
       hideVideo.value = state.opacity === "0" || state.opacity === 0;
       changeOpacity(state.opacity);
-      
-      // 全体の状態を更新（timers, polls, dices を含む）
+
       roomState.value = state;
-      
+
       if (state.currentVideoId) {
         partyState.value = "catching-up";
         currentVideoStartTime.value =
           state.currentVideoStartTime + dateTimeDiff;
         currentVideoPauseTime.value = state.currentVideoTotalPauseTime;
-        currentVideoSeekTo.value = state.currentVideoSeekTo
-        playerRef.value.cueVideoById(state.currentVideoId,currentVideoSeekTo.value);
+        currentVideoSeekTo.value = state.currentVideoSeekTo;
+        playerRef.value.cueVideoById(
+          state.currentVideoId,
+          currentVideoSeekTo.value,
+        );
       }
     });
     socket.on("queue-updated", (obj) => {
@@ -308,7 +150,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       changeOpacity(state.opacity);
     });
     socket.on("sync-loop", (state) => {
-      endLoop.value = state.endLoop
+      endLoop.value = state.endLoop;
     });
     socket.on("video-sync-state", ({ states, totalPauseTime }) => {
       currentVideoPauseTime.value = totalPauseTime;
@@ -325,33 +167,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       currentVideoStartTime.value = Date.now();
       currentVideoPauseTime.value = 0;
       startPlayback(currentVideoStartTime.value);
-    });
-    socket.on("timers-updated", ({ timers }) => {
-      roomState.value.timers = timers;
-    });
-    socket.on("timer-completed", ({ timerId, timerName }) => {
-      stopAlarm();
-      const audio = new Audio(
-        new URL("../aseets/sounds/alarm.mp3", import.meta.url).href,
-      );
-      currentAlarmAudio.value = audio;
-      audio.play().catch((err) => console.log("Audio play error:", err));
-    });
-    socket.on("polls-updated", ({ polls }) => {
-      roomState.value.polls = polls;
-    });
-    socket.on("poll-vote-count", ({ pollId, counts }) => {
-      const poll = roomState.value.polls.find(p => p.id === pollId);
-      if (poll) {
-        counts.forEach(({ optionId, count }) => {
-          if (poll.options[optionId]) {
-            poll.options[optionId].count = count;
-          }
-        });
-      }
-    });
-    socket.on("dices-updated", ({ dices }) => {
-      roomState.value.dices = dices;
     });
   }
 
@@ -380,29 +195,5 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     toggleLoop,
     endLoop,
     stateChange,
-    timerMinutes,
-    timerSeconds,
-    timerName,
-    createTimer,
-    deleteTimer,
-    stopAlarm,
-    formatTimerDisplay,
-    pollCount,
-    createNewPoll,
-    startPoll,
-    endPoll,
-    deletePoll,
-    addPollOption,
-    removePollOption,
-    updatePollOption,
-    setPollAllowMultiple,
-    votePoll,
-    getPollVotedCount,
-    diceCount,
-    diceType,
-    rollDice,
-    clearDices,
-    getRoomMemberName,
-    getTimerRemaining,
   };
 }
