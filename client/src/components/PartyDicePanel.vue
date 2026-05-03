@@ -30,6 +30,7 @@
 </template>
 
 <script setup>
+import "@/styles/party-dice-panel.css";
 import { usePartyToolPanelsContext } from "./usePartyToolPanelsContext.js";
 
 const p = usePartyToolPanelsContext();

@@ -1,0 +1,94 @@
+/* -------- DICE (COMPACT) -------- */
+.dice-input-group-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dice-input-compact {
+  width: 50px;
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.dice-select-compact {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+  flex: 1;
+}
+
+.dice-button-compact {
+  padding: 6px 10px;
+  background: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dice-button-compact:hover {
+  background: #7b1fa2;
+}
+
+.dice-clear-btn-compact {
+  padding: 6px 10px;
+  background: #c62828;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.dice-clear-btn-compact:hover {
+  background: #b71c1c;
+}
+
+.dices-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.dice-result-compact {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  padding: 6px;
+  font-size: 10px;
+}
+
+.dice-user {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.dice-rolls {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 3px;
+  flex-wrap: wrap;
+}
+
+.dice-rolls span {
+  background: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 2px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.dice-total {
+  font-weight: 600;
+  color: #333;
+}

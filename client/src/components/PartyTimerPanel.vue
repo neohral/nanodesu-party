@@ -32,6 +32,7 @@
 </template>
 
 <script setup>
+import "@/styles/party-timer-panel.css";
 import { onMounted, onUnmounted, ref } from "vue";
 import { usePartyToolPanelsContext } from "./usePartyToolPanelsContext.js";
 

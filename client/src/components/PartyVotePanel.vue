@@ -87,6 +87,7 @@
 </template>
 
 <script setup>
+import "@/styles/party-vote-panel.css";
 import { usePartyToolPanelsContext } from "./usePartyToolPanelsContext.js";
 
 const p = usePartyToolPanelsContext();

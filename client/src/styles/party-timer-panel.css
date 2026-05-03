@@ -1,0 +1,99 @@
+/* -------- TIMER (COMPACT) -------- */
+.timer-input-group {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.timer-input,
+.timer-name-input {
+  padding: 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.timer-input {
+  width: 40px;
+  text-align: center;
+}
+
+.timer-minutes {
+  width: 40px;
+}
+
+.timer-secs {
+  width: 40px;
+}
+
+.timer-separator {
+  font-weight: bold;
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+.timer-name-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.timer-button {
+  padding: 6px 10px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.timer-button:hover {
+  background: #0b7dda;
+}
+
+.timers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timer-item-compact {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.timer-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.timer-remaining {
+  color: #ff9800;
+  font-weight: 600;
+  margin: 0 6px;
+  font-size: 10px;
+}
+
+.timer-delete-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+}
+
+.timer-delete-btn:hover {
+  background: #da190b;
+}
