@@ -5,8 +5,10 @@ import { ref, nextTick } from "vue";
  * `Party.vue` のみで利用し、`registerPartyToolSocketHandlers` を `eventRegister` と同じ socket に対して呼ぶ。
  */
 export function usePartyToolPanels(socket, roomId, roomStateRef) {
-  const timerMinutes = ref(10);
-  const timerSeconds = ref(0);
+  const RESET_TIMER_MINUTES = 10
+  const RESET_TIMER_SECOUNDS = 0
+  const timerMinutes = ref(RESET_TIMER_MINUTES);
+  const timerSeconds = ref(RESET_TIMER_SECOUNDS);
   const timerName = ref("");
   const diceCount = ref(1);
   const diceType = ref(6);
@@ -36,8 +38,8 @@ export function usePartyToolPanels(socket, roomId, roomStateRef) {
       `Timer ${(roomStateRef.value.timers || []).length + 1}`;
     if (totalSeconds <= 0) return;
     socket.emit("create-timer", { roomId, seconds: totalSeconds, name });
-    timerMinutes.value = 0;
-    timerSeconds.value = 30;
+    timerMinutes.value = RESET_TIMER_MINUTES;
+    timerSeconds.value = RESET_TIMER_SECOUNDS;
     timerName.value = "";
   }
 
