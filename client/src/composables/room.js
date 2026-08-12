@@ -26,18 +26,11 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   }
 
   function addVideo() {
-    console.log("add");
-    const id = extractVideoId(videoUrl.value);
-    if (!id) return;
-    socket.emit("add-video", { roomId, videoId: id, seekTo: videoSeekTo.value });
+    const input = videoUrl.value.trim();
+    if (!input) return;
+    socket.emit("add-video", { roomId, input, seekTo: videoSeekTo.value });
     videoUrl.value = "";
     videoSeekTo.value = 0;
-  }
-
-  function extractVideoId(url) {
-    const reg = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
-    const match = url.match(reg);
-    return match ? match[1] : null;
   }
 
   function startPlayback(timestamp) {
@@ -186,7 +179,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     joinRoom,
     onReorder,
     addVideo,
-    extractVideoId,
     startPlayback,
     skipToNextVideo,
     eventRegister,

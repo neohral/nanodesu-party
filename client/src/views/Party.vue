@@ -49,7 +49,7 @@
         <!-- Queue Tab -->
         <div v-if="activeTab === 'queue'" class="tab-content">
           <div class="input-section">
-            <input v-model="videoUrl" placeholder="YouTube URL" class="url-input" />
+            <input v-model="videoUrl" placeholder="URL / プレイリスト / 検索ワード" class="url-input" />
             <input v-model.number="videoSeekTo" type="number" placeholder="開始時間（秒）" class="seek-input" min="0" />
             <button @click="addVideo" class="add-button">Add</button>
           </div>

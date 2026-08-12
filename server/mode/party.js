@@ -1,5 +1,5 @@
 const crypto = require("crypto")
-const { fetchVideoInfo } = require("../common/youtube")
+const { fetchVideoInfo, resolveVideoIds } = require("../common/youtube")
 const { startPlayback } = require("../common/videoSync")
 const {
     timerRegister,
@@ -30,23 +30,36 @@ const initroom = {
 }
 
 function videoRegister(io, socket, roomState) {
-    socket.on("add-video", async ({ roomId, videoId, seekTo }) => {
+    socket.on("add-video", async ({ roomId, videoId, input, seekTo }) => {
         const room = roomState[roomId]
-        const info = await fetchVideoInfo(videoId)
-        if (!info) return
-
         const member = room.members.find(m => m.id === socket.id)
         if (!member) return
 
-        const video = {
-            id: crypto.randomUUID(),
-            user: socket.id,
-            userName: member.name,
-            seekTo: seekTo,
-            ...info,
+        let videoIds = []
+        if (input) {
+            videoIds = await resolveVideoIds(input)
+        } else if (videoId) {
+            videoIds = [videoId]
+        }
+        if (videoIds.length === 0) return
+
+        let added = false
+        for (const id of videoIds) {
+            const info = await fetchVideoInfo(id)
+            if (!info) continue
+
+            room.queue.push({
+                id: crypto.randomUUID(),
+                user: socket.id,
+                userName: member.name,
+                seekTo: added ? 0 : seekTo,
+                ...info,
+            })
+            added = true
         }
 
-        room.queue.push(video)
+        if (!added) return
+
         io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
 
         if (!room.currentVideoId) {

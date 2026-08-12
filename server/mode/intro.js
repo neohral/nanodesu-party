@@ -1,5 +1,5 @@
 const crypto = require("crypto")
-const { fetchVideoInfo } = require("../common/youtube")
+const { fetchVideoInfo, resolveVideoIds } = require("../common/youtube")
 const {startPlayback } =
   require("../common/videoSync")
 
@@ -25,25 +25,31 @@ const initroom = {
   gameAnswerQueue: [],
 }
 function videoRegister(io, socket, roomState) {
-  socket.on("add-video", async ({ roomId, videoId, seekTo }) => {
+  socket.on("add-video", async ({ roomId, videoId, input, seekTo }) => {
     const room = roomState[roomId]
     if (room.gameStatus !== "waiting") return
-
-    const info = await fetchVideoInfo(videoId)
-    if (!info) return
 
     const member = room.members.find(m => m.id === socket.id)
     if (!member) return
 
-    const video = {
+    let videoIds = []
+    if (input) {
+      videoIds = (await resolveVideoIds(input)).slice(0, 1)
+    } else if (videoId) {
+      videoIds = [videoId]
+    }
+    if (videoIds.length === 0) return
+
+    const info = await fetchVideoInfo(videoIds[0])
+    if (!info) return
+
+    member.video = {
       id: crypto.randomUUID(),
       user: socket.id,
       userName: member.name,
       seekTo: seekTo,
       ...info
     }
-
-    member.video = video;
     const loadedCnt = room.members.filter((member) => member.video)
 
     if (loadedCnt === roomState[roomId].members.length) {

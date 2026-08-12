@@ -141,7 +141,7 @@
           <div class="input-section">
             <input
               v-model="videoUrl"
-              placeholder="YouTube URL"
+              placeholder="URL / プレイリスト / 検索ワード"
               class="url-input"
             />
             <input
