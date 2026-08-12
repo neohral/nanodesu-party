@@ -1,7 +1,11 @@
 const crypto = require("crypto")
 const { fetchVideoInfo } = require("../common/youtube")
-const {startPlayback } =
-  require("../common/videoSync")
+const { startPlayback } = require("../common/videoSync")
+const {
+    timerRegister,
+    pollRegister,
+    diceRegister,
+} = require("./partyToolPanels")
 
 const mode = "party"
 const initroom = {
@@ -19,8 +23,12 @@ const initroom = {
     timeoutId: "",
     opacity: 1,
     hideQueue: false,
-    endLoop: false
+    endLoop: false,
+    timers: [],
+    polls: [],
+    dices: [],
 }
+
 function videoRegister(io, socket, roomState) {
     socket.on("add-video", async ({ roomId, videoId, seekTo }) => {
         const room = roomState[roomId]
@@ -35,7 +43,7 @@ function videoRegister(io, socket, roomState) {
             user: socket.id,
             userName: member.name,
             seekTo: seekTo,
-            ...info
+            ...info,
         }
 
         room.queue.push(video)
@@ -50,18 +58,18 @@ function videoRegister(io, socket, roomState) {
         prepareVideo(io, roomId, roomState)
     })
     socket.on("toggle-loop", ({ roomId }) => {
-    roomState[roomId].endLoop = !roomState[roomId].endLoop
-    io.to(roomId).emit("sync-loop", { endLoop: roomState[roomId].endLoop })
-  })
+        roomState[roomId].endLoop = !roomState[roomId].endLoop
+        io.to(roomId).emit("sync-loop", { endLoop: roomState[roomId].endLoop })
+    })
 }
 
 function prepareVideo(io, roomId, roomState) {
     const room = roomState[roomId]
     let next = room.queue.shift()
     if (!next) {
-        if(room.endLoop){
+        if (room.endLoop) {
             next = room.historyQueue.pop()
-        }else{
+        } else {
             room.currentVideoId = null
             room.currentVideoStatus = "waiting"
             room.currentVideoSeekTo = 0
@@ -76,7 +84,7 @@ function prepareVideo(io, roomId, roomState) {
     room.loadingUsers = []
     room.currentVideoPauseStacks = 0
     room.currentVideoSeekTo = next.seekTo
-    io.to(roomId).emit("prepare-video", { videoId: next.videoId, seekTo: room.currentVideoSeekTo, })
+    io.to(roomId).emit("prepare-video", { videoId: next.videoId, seekTo: room.currentVideoSeekTo })
     io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
 
     room.timeoutId = setTimeout(() => startPlayback(io, roomId, roomState), 5000)
@@ -86,5 +94,8 @@ module.exports = {
     initroom,
     mode,
     videoRegister,
-    prepareVideo
+    prepareVideo,
+    timerRegister,
+    pollRegister,
+    diceRegister,
 }

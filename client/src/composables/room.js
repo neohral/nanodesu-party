@@ -1,4 +1,5 @@
 import { ref } from "vue";
+
 export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) {
   const userId = ref("");
   const hideQueue = ref(false);
@@ -12,7 +13,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const currentVideoSeekTo = ref(0);
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
-  const endLoop = ref(false)
+  const endLoop = ref(false);
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -48,11 +49,6 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     player.playVideo();
   }
 
-  function skipToNextVideo() {
-    socket.emit("video-ended", { roomId });
-    partyState.value = "waiting";
-  }
-
   function toggleOpacity() {
     socket.emit("toggle-opacity", { roomId });
   }
@@ -65,9 +61,14 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("toggle-loop", { roomId });
   }
 
+  function skipToNextVideo() {
+    socket.emit("video-ended", { roomId });
+    partyState.value = "waiting";
+  }
+
   function stateChange(event) {
     const player = playerRef.value;
-    console.log(event.data,partyState.value)
+    console.log(event.data, partyState.value);
     if (event.data === YT.PlayerState.CUED) {
       if (partyState.value === "catching-up") {
         partyState.value = roomStateRef.value.currentVideoStatus;
@@ -87,14 +88,14 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
             states: "pausing",
           });
         }
-        startPlayback(currentVideoStartTime.value + currentVideoPauseTime.value)
+        startPlayback(currentVideoStartTime.value + currentVideoPauseTime.value);
       }
       if (partyState.value === "willpausing") {
         partyState.value = "pausing";
       }
     }
     if (event.data === YT.PlayerState.PLAYING) {
-       playerPaused.value = false;
+      playerPaused.value = false;
       if (partyState.value === "pausing") {
         if (userId.value === roomStateRef.value.leader) {
           socket.emit("video-state-change", {
@@ -122,13 +123,19 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       hideQueue.value = state.hideQueue;
       hideVideo.value = state.opacity === "0" || state.opacity === 0;
       changeOpacity(state.opacity);
+
+      roomState.value = state;
+
       if (state.currentVideoId) {
         partyState.value = "catching-up";
         currentVideoStartTime.value =
           state.currentVideoStartTime + dateTimeDiff;
         currentVideoPauseTime.value = state.currentVideoTotalPauseTime;
-        currentVideoSeekTo.value = state.currentVideoSeekTo
-        playerRef.value.cueVideoById(state.currentVideoId,currentVideoSeekTo.value);
+        currentVideoSeekTo.value = state.currentVideoSeekTo;
+        playerRef.value.cueVideoById(
+          state.currentVideoId,
+          currentVideoSeekTo.value,
+        );
       }
     });
     socket.on("queue-updated", (obj) => {
@@ -143,7 +150,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
       changeOpacity(state.opacity);
     });
     socket.on("sync-loop", (state) => {
-      endLoop.value = state.endLoop
+      endLoop.value = state.endLoop;
     });
     socket.on("video-sync-state", ({ states, totalPauseTime }) => {
       currentVideoPauseTime.value = totalPauseTime;
@@ -186,6 +193,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     toggleOpacity,
     toggleHideQueue,
     toggleLoop,
+    endLoop,
     stateChange,
   };
 }

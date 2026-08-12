@@ -1,9 +1,12 @@
 <template>
   <div class="container">
     <div class="main-content">
+      <!-- Player Section -->
       <div class="player-wrapper">
         <div ref="playerContainer" class="player"></div>
       </div>
+
+      <PartyToolPanels v-if="isMurder"/>
     </div>
 
     <!-- Toggle Button -->
@@ -119,7 +122,7 @@
             </div>
             <div class="setting-item">
               <label>
-                <input type="checkbox" v-model="loopvideo" @change="toggleLoop" />
+                <input type="checkbox" v-model="endLoop" @change="toggleLoop" />
                  Empty loop
               </label>
             </div>
@@ -132,11 +135,18 @@
 
 <script setup>
 import '@/styles/nanodesu.css'
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, onUnmounted, provide } from "vue";
 import { useRoute } from "vue-router";
 import { io } from "socket.io-client";
 import draggable from "vuedraggable";
+import PartyToolPanels from "../components/PartyToolPanels.vue";
+import { PARTY_TOOL_PANELS_KEY } from "../components/partyToolPanelsKeys.js";
 import { useRoom } from "../composables/room";
+import { usePartyToolPanels } from "../composables/usePartyToolPanels";
+
+const props = defineProps({
+  isMurder: Boolean
+})
 
 const route = useRoute();
 const roomId = route.params.roomId;
@@ -150,6 +160,9 @@ const roomState = ref({
   currentVideoId: null,
   queue: [],
   historyQueue: [],
+  timers: [],
+  polls: [],
+  dices: [],
 });
 const playerContainer = ref(null);
 const sidebarOpen = ref(true);
@@ -186,10 +199,23 @@ const {
   toggleOpacity,
   toggleHideQueue,
   toggleLoop,
+  endLoop,
   stateChange,
 } = useRoom(socket, roomId, roomState, playerRef, changeOpacity);
-eventRegister(io, socket, roomState);
 
+const {
+  registerPartyToolSocketHandlers,
+  ...partyToolProvide
+} = usePartyToolPanels(socket, roomId, roomState);
+
+eventRegister(io, socket, roomState);
+registerPartyToolSocketHandlers(socket, roomState);
+
+provide(PARTY_TOOL_PANELS_KEY, {
+  roomState,
+  userId,
+  ...partyToolProvide,
+});
 
 socket.on("prepare-video", ({ videoId, seekTo }) => {
   partyState.value = "preparing";
@@ -238,5 +264,9 @@ onMounted(() => {
       iframe.style.height = "100%";
     }
   });
+});
+
+onUnmounted(() => {
+  partyToolProvide.stopAlarm();
 });
 </script>

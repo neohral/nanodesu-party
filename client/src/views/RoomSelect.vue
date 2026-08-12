@@ -22,6 +22,7 @@
           Intro に参加
         </button>
       </div>
+      
 
       <div class="info-section">
         <p class="default-room">デフォルト: <code>default</code></p>
