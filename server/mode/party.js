@@ -30,6 +30,18 @@ const initroom = {
 }
 
 function videoRegister(io, socket, roomState) {
+    socket.on("resolve-videos", async ({ input }, callback) => {
+        if (typeof callback !== "function") return
+
+        const videoIds = await resolveVideoIds(input)
+        const items = []
+        for (const id of videoIds) {
+            const info = await fetchVideoInfo(id)
+            if (info) items.push(info)
+        }
+        callback({ items })
+    })
+
     socket.on("add-video", async ({ roomId, videoId, input, seekTo }) => {
         const room = roomState[roomId]
         const member = room.members.find(m => m.id === socket.id)

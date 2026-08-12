@@ -43,6 +43,18 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
   })
 
+  socket.on("remove-from-queue", ({ roomId, itemId }) => {
+    const room = roomState[roomId]
+    if (!room) return
+
+    const item = room.queue.find((q) => q.id === itemId)
+    if (!item) return
+    if (socket.id !== room.leader && item.user !== socket.id) return
+
+    room.queue = room.queue.filter((q) => q.id !== itemId)
+    io.to(roomId).emit("queue-updated", { queue: room.queue, historyQueue: room.historyQueue })
+  })
+
   socket.on("video-ended", ({ roomId }) => {
     if (socket.id != roomState[roomId].leader || socket.id != roomState[roomId].gameMaster) return
     prepareVideo(io,roomId, roomState)

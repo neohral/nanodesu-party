@@ -167,6 +167,13 @@
                     <div class="queue-item-title">{{ element.title }}</div>
                     <div class="queue-item-user">{{ element.userName }}</div>
                   </div>
+                  <button
+                    v-if="canRemoveFromQueue(element)"
+                    @click.stop="removeFromQueue(element.id)"
+                    class="stock-action-button danger"
+                  >
+                    削除
+                  </button>
                 </div>
               </template>
             </draggable>
@@ -409,6 +416,8 @@ const {
   partyState,
   joinRoom,
   onReorder,
+  canRemoveFromQueue,
+  removeFromQueue,
   addVideo,
   startPlayback,
   skipToNextVideo,

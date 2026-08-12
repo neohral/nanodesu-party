@@ -25,6 +25,17 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("reorder-queue", { roomId, queue: roomStateRef.value.queue });
   }
 
+  function canRemoveFromQueue(item) {
+    return (
+      userId.value === roomStateRef.value.leader ||
+      item.user === userId.value
+    );
+  }
+
+  function removeFromQueue(itemId) {
+    socket.emit("remove-from-queue", { roomId, itemId });
+  }
+
   function addVideo() {
     const input = videoUrl.value.trim();
     if (!input) return;
@@ -178,6 +189,8 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     playerPaused,
     joinRoom,
     onReorder,
+    canRemoveFromQueue,
+    removeFromQueue,
     addVideo,
     startPlayback,
     skipToNextVideo,

@@ -169,12 +169,14 @@
 
 .settings-section,
 .members-section,
+.stock-section,
 .leader-commands {
   margin-bottom: 20px;
 }
 
 .settings-section h4,
 .members-section h4,
+.stock-section h4,
 .leader-commands h4 {
   margin: 0 0 15px 0;
   font-size: 14px;
@@ -471,6 +473,7 @@
   display: flex;
   gap: 10px;
   padding: 12px;
+  align-items: center;
   margin: 8px 0;
   background: white;
   border: 1px solid #eee;
@@ -500,6 +503,52 @@
   font-size: 11px;
   color: #999;
   margin-top: 4px;
+}
+
+.stock-item {
+  align-items: center;
+}
+
+.stock-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.stock-action-button {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stock-action-button:hover {
+  background: #f0f0f0;
+}
+
+.stock-action-button.danger {
+  color: #e53935;
+  border-color: #ffcdd2;
+}
+
+.stock-action-button.danger:hover {
+  background: #ffebee;
+}
+
+.stock-empty {
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  margin-top: 20px;
+}
+
+.add-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* -------- MOBILE -------- */
