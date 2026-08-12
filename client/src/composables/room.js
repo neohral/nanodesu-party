@@ -14,6 +14,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
   const endLoop = ref(false);
+  const historyCopied = ref(false);
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -34,6 +35,24 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
 
   function removeFromQueue(itemId) {
     socket.emit("remove-from-queue", { roomId, itemId });
+  }
+
+  async function copyHistoryToClipboard() {
+    const history = roomStateRef.value.historyQueue;
+    if (history.length === 0) return;
+
+    const text = history
+      .map(
+        (item) =>
+          `${item.title}\nhttps://www.youtube.com/watch?v=${item.videoId}`,
+      )
+      .join("\n\n");
+
+    await navigator.clipboard.writeText(text);
+    historyCopied.value = true;
+    setTimeout(() => {
+      historyCopied.value = false;
+    }, 2000);
   }
 
   function addVideo() {
@@ -191,6 +210,8 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     onReorder,
     canRemoveFromQueue,
     removeFromQueue,
+    copyHistoryToClipboard,
+    historyCopied,
     addVideo,
     startPlayback,
     skipToNextVideo,

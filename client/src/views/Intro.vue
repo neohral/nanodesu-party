@@ -182,7 +182,12 @@
               v-if="roomState.historyQueue.length > 0"
               class="history-section"
             >
-              <h4>再生済み</h4>
+              <div class="history-section-header">
+                <h4>再生済み</h4>
+                <button @click="copyHistoryToClipboard" class="history-copy-button">
+                  {{ historyCopied ? "コピーしました" : "一覧をコピー" }}
+                </button>
+              </div>
               <div class="history-queue-container">
                 <div
                   v-for="element in roomState.historyQueue"
@@ -418,6 +423,8 @@ const {
   onReorder,
   canRemoveFromQueue,
   removeFromQueue,
+  copyHistoryToClipboard,
+  historyCopied,
   addVideo,
   startPlayback,
   skipToNextVideo,
