@@ -47,7 +47,7 @@
 
 .toggle-button {
   position: fixed;
-  right: 0px;
+  left: 0px;
   top: 10px;
   z-index: 1001;
   width: 40px;
@@ -68,17 +68,17 @@
 
 .sidebar {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 0;
   width: 350px;
   height: 100vh;
   background: #f9f9f9;
-  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   transition: transform 0.3s ease-in-out;
   z-index: 1000;
-  transform: translateX(100%);
+  transform: translateX(-100%);
 }
 
 .sidebar.open {
@@ -587,7 +587,7 @@
   }
 
   .toggle-button {
-    right: 15px;
+    left: 15px;
     top: 15px;
   }
 }
