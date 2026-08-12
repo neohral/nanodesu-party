@@ -79,14 +79,14 @@ async function resolveVideoIds(input) {
   const trimmed = input.trim()
   if (!trimmed) return []
 
-  const playlistId = extractPlaylistId(trimmed)
-  if (playlistId) {
-    return fetchPlaylistVideoIds(playlistId)
-  }
-
   const videoId = extractVideoId(trimmed)
   if (videoId) {
     return [videoId]
+  }
+
+  const playlistId = extractPlaylistId(trimmed)
+  if (playlistId) {
+    return fetchPlaylistVideoIds(playlistId)
   }
 
   const searchId = await searchFirstVideoId(trimmed)
