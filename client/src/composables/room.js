@@ -14,6 +14,7 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
   const videoSeekTo = ref(0);
   const playerPaused = ref(false);
   const endLoop = ref(false);
+  const historyCopied = ref(false);
 
   function joinRoom() {
     const name = userName.value.trim() || "Anonymous";
@@ -25,19 +26,41 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     socket.emit("reorder-queue", { roomId, queue: roomStateRef.value.queue });
   }
 
-  function addVideo() {
-    console.log("add");
-    const id = extractVideoId(videoUrl.value);
-    if (!id) return;
-    socket.emit("add-video", { roomId, videoId: id, seekTo: videoSeekTo.value });
-    videoUrl.value = "";
-    videoSeekTo.value = 0;
+  function canRemoveFromQueue(item) {
+    return (
+      userId.value === roomStateRef.value.leader ||
+      item.user === userId.value
+    );
   }
 
-  function extractVideoId(url) {
-    const reg = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/;
-    const match = url.match(reg);
-    return match ? match[1] : null;
+  function removeFromQueue(itemId) {
+    socket.emit("remove-from-queue", { roomId, itemId });
+  }
+
+  async function copyHistoryToClipboard() {
+    const history = roomStateRef.value.historyQueue;
+    if (history.length === 0) return;
+
+    const text = history
+      .map(
+        (item) =>
+          `${item.title}\nhttps://www.youtube.com/watch?v=${item.videoId}`,
+      )
+      .join("\n\n");
+
+    await navigator.clipboard.writeText(text);
+    historyCopied.value = true;
+    setTimeout(() => {
+      historyCopied.value = false;
+    }, 2000);
+  }
+
+  function addVideo() {
+    const input = videoUrl.value.trim();
+    if (!input) return;
+    socket.emit("add-video", { roomId, input, seekTo: videoSeekTo.value });
+    videoUrl.value = "";
+    videoSeekTo.value = 0;
   }
 
   function startPlayback(timestamp) {
@@ -185,8 +208,11 @@ export function useRoom(socket, roomId, roomStateRef, playerRef, changeOpacity) 
     playerPaused,
     joinRoom,
     onReorder,
+    canRemoveFromQueue,
+    removeFromQueue,
+    copyHistoryToClipboard,
+    historyCopied,
     addVideo,
-    extractVideoId,
     startPlayback,
     skipToNextVideo,
     eventRegister,

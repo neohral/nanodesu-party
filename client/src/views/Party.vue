@@ -49,7 +49,7 @@
         <!-- Queue Tab -->
         <div v-if="activeTab === 'queue'" class="tab-content">
           <div class="input-section">
-            <input v-model="videoUrl" placeholder="YouTube URL" class="url-input" />
+            <input v-model="videoUrl" placeholder="URL / プレイリスト / 検索ワード" class="url-input" />
             <input v-model.number="videoSeekTo" type="number" placeholder="開始時間（秒）" class="seek-input" min="0" />
             <button @click="addVideo" class="add-button">Add</button>
           </div>
@@ -62,12 +62,24 @@
                     <div class="queue-item-title">{{ element.title }}</div>
                     <div class="queue-item-user">{{ element.userName }}</div>
                   </div>
+                  <button
+                    v-if="canRemoveFromQueue(element)"
+                    @click.stop="removeFromQueue(element.id)"
+                    class="stock-action-button danger"
+                  >
+                    削除
+                  </button>
                 </div>
               </template>
             </draggable>
 
             <div v-if="roomState.historyQueue.length > 0" class="history-section">
-              <h4>再生済み</h4>
+              <div class="history-section-header">
+                <h4>再生済み</h4>
+                <button @click="copyHistoryToClipboard" class="history-copy-button">
+                  {{ historyCopied ? "コピーしました" : "一覧をコピー" }}
+                </button>
+              </div>
               <div class="history-queue-container">
                 <div v-for="element in roomState.historyQueue" :key="`history-${element.id}`" class="queue-item">
                   <img :src="element.thumbnail" width="80" />
@@ -93,6 +105,35 @@
                 <span>{{ member.name || "Anonymous" }}</span>
                 <span v-if="member.id === roomState.leader" class="leader-badge">Leader</span>
               </div>
+            </div>
+          </div>
+
+          <div class="stock-section">
+            <h4>Stock</h4>
+            <div class="input-section">
+              <input v-model="stockUrl" placeholder="URL / プレイリスト / 検索ワード" class="url-input" />
+              <input v-model.number="stockSeekTo" type="number" placeholder="開始時間（秒）" class="seek-input" min="0" />
+              <button @click="addToStock" class="add-button" :disabled="stockLoading">
+                {{ stockLoading ? "..." : "Add" }}
+              </button>
+            </div>
+            <div class="queue-display">
+              <draggable v-model="stockItems" item-key="id" class="queue-container">
+                <template #item="{ element }">
+                  <div class="queue-item stock-item">
+                    <img :src="element.thumbnail" width="80" />
+                    <div class="queue-item-info">
+                      <div class="queue-item-title">{{ element.title }}</div>
+                      <div v-if="element.seekTo > 0" class="queue-item-user">{{ element.seekTo }}秒から</div>
+                    </div>
+                    <div class="stock-item-actions">
+                      <button @click="addStockToQueue(element)" class="stock-action-button">Queue</button>
+                      <button @click="removeFromStock(element.id)" class="stock-action-button danger">削除</button>
+                    </div>
+                  </div>
+                </template>
+              </draggable>
+              <p v-if="stockItems.length === 0" class="stock-empty">Stockは空です</p>
             </div>
           </div>
         </div>
@@ -142,6 +183,7 @@ import draggable from "vuedraggable";
 import PartyToolPanels from "../components/PartyToolPanels.vue";
 import { PARTY_TOOL_PANELS_KEY } from "../components/partyToolPanelsKeys.js";
 import { useRoom } from "../composables/room";
+import { useStock } from "../composables/useStock";
 import { usePartyToolPanels } from "../composables/usePartyToolPanels";
 
 const props = defineProps({
@@ -192,6 +234,10 @@ const {
   partyState,
   joinRoom,
   onReorder,
+  canRemoveFromQueue,
+  removeFromQueue,
+  copyHistoryToClipboard,
+  historyCopied,
   addVideo,
   startPlayback,
   skipToNextVideo,
@@ -202,6 +248,16 @@ const {
   endLoop,
   stateChange,
 } = useRoom(socket, roomId, roomState, playerRef, changeOpacity);
+
+const {
+  stockItems,
+  stockUrl,
+  stockSeekTo,
+  stockLoading,
+  addToStock,
+  removeFromStock,
+  addStockToQueue,
+} = useStock(socket, roomId);
 
 const {
   registerPartyToolSocketHandlers,
