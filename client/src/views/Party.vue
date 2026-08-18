@@ -1,12 +1,11 @@
 <template>
-  <div class="container">
+  <div class="container" :class="{ 'murder-mode': isMurder }">
     <div class="main-content">
       <!-- Player Section -->
+      <PartyToolPanels v-if="isMurder"/>
       <div class="player-wrapper">
         <div ref="playerContainer" class="player"></div>
       </div>
-
-      <PartyToolPanels v-if="isMurder"/>
     </div>
 
     <!-- Toggle Button -->
@@ -207,7 +206,7 @@ const roomState = ref({
   dices: [],
 });
 const playerContainer = ref(null);
-const sidebarOpen = ref(true);
+const sidebarOpen = ref(!props.isMurder);
 const activeTab = ref("queue");
 const playerRef = ref(null);
 const changeOpacity = (opacity) => {
