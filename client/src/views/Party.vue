@@ -75,13 +75,13 @@
 
             <div v-if="roomState.historyQueue.length > 0" class="history-section">
               <div class="history-section-header">
-                <h4>再生済み</h4>
+                <h4>再生履歴</h4>
                 <button @click="copyHistoryToClipboard" class="history-copy-button">
                   {{ historyCopied ? "コピーしました" : "一覧をコピー" }}
                 </button>
               </div>
               <div class="history-queue-container">
-                <div v-for="element in roomState.historyQueue" :key="`history-${element.id}`" class="queue-item">
+                <div v-for="element in [...roomState.historyQueue].reverse()" :key="`history-${element.id}`" class="queue-item">
                   <img :src="element.thumbnail" width="80" />
                   <div class="queue-item-info">
                     <div class="queue-item-title">{{ element.title }}</div>
